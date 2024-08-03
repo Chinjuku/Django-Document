@@ -1,4 +1,4 @@
-# Document สรุป ( Week2 - Week5 ) วิชา Server-Side-Web
+# Document สรุปวิชา Server-Side-Web
 ## Install Django ( Week 2 - Week 3 )
 ### How to install django framework
 #### 1. Install & Create Virtual Environment
@@ -254,6 +254,8 @@ True
 เมื่อเราทำการประกาศ `class models.Model` ใน `models.py` แล้ว เราจะสามารถใช้งาน database-abstraction API ที่จะช่วยให้่เรา create, retrieve, update และ delete ข้อมูลในฐานข้อมูลได้่อย่างง่ายและรวดเร็วมากๆ โดยไม่จำเป็นจะต้องเป็น SQL แม้แต่นิดเดียว
 NOTE: ให้เปิด Django shell ขึ้นมา (`python manage.py shell`) และพิมพ์คำสั่งดังนี้
 
+### Create/Save/Add Data into Model
+
 ```python
 >>> from blogs.models import Blog
 >>> b = Blog(name="Beatles Blog", tagline="All the latest Beatles news.")
@@ -262,7 +264,7 @@ NOTE: ให้เปิด Django shell ขึ้นมา (`python manage.py s
 
 ซึ่ง Django จะเป็นการ generate SQL command `INSERT` เมื่อเราสั่ง `save()`
 
-## Saving changes to objects
+### Saving changes to objects
 
 ในการบันทึกการแก้ไข record ที่มีอยู่ใน database แล้วก็ใช้ `save()` เช่นเดียวกัน
 
@@ -273,7 +275,7 @@ NOTE: ให้เปิด Django shell ขึ้นมา (`python manage.py s
 
 ซึ่ง Django จะเป็นการ generate SQL command `UPDATE` เมื่อเราสั่ง `save()`
 
-## Saving ForeignKey and ManyToManyField fields
+### Saving ForeignKey and ManyToManyField fields
 
 การ update foreign key ก็สามารถทำได้เหมือนกับการ update field ปกติ โดยใช้ `save()`
 
@@ -305,7 +307,7 @@ NOTE: ให้เปิด Django shell ขึ้นมา (`python manage.py s
 >>> entry.authors.add(john, paul, george, ringo)
 ```
 
-## Retrieving objects
+### Retrieving objects
 
 การ `SELECT` ข้อมูลออกมาจาก database นั้นทาง Django มี API ให้เราใช้งานได้ง่ายและสามารถทำ query ที่ซับซ้อนได้ด้วย โดยเราจะได้ instance ของ class `Queryset` มาใช้งาน
 
@@ -366,7 +368,7 @@ SELECT * FROM entry WHERE entry.headline LIKE "What%" AND entry.pub_date < CURRE
 
 **NOTE:** การใช้ negative index (`Entry.objects.all()[-1]`) นั้นไม่ support
 
-## Comparing objects
+### Comparing objects
 
 การเปรียบเทียบ instance ของ model 2 ตัวว่าเป็นตัวเดียวกันไหม สามารถทำได้โดยใช้ `==`
 
@@ -375,10 +377,17 @@ SELECT * FROM entry WHERE entry.headline LIKE "What%" AND entry.pub_date < CURRE
 >>> some_entry.id == other_entry.id
 ```
 
-## Deleting objects
+### Update objects
+การแก้ไขข้อมูลจาก database สามารถทำได้โดยใช้ method `update()`
+```python
+    nickname = "Chinjuku"
+    change = Blog.objects.filter(id=5).update(
+        name=nickname
+    )
+```
 
+### Deleting objects
 การลบข้อมูลออกจาก database สามารถทำได้โดยใช้ method `delete()`
-
 ลบทีละตัว
 
 ```python
@@ -440,9 +449,212 @@ Jane Jones
 
 ผลลัพธ์ที่ได้จาก `raw()` เป็น instance ของ class `django.db.models.query.RawQuerySet` ซึ่งใช้งานคล้ายกับ `QuerySet` ที่เราคุ้นเคย
 
-#### Create Jupiter NoteBook
+### Create Jupiter NoteBook ( Week 4 )
+#### 1. Install Django Jupiter notebook
+
 ```
     pip install django-extensions ipython jupyter notebook
     pip install ipython==8.25.0 jupyter_server==2.14.1 jupyterlab==4.2.2 jupyterlab_server==2.27.2
     pip install notebook==6.5.7 # ถ้าไม่ได้ให้ใช้ 6.5.6
 ```
+
+#### 2. Create Directory notebooks
+
+```
+    mkdir notebooks
+```
+
+#### 3. เพิ่ม `django-extensions` ใน INSTALLED_APPS ในไฟล์ settings.py
+
+```py
+    INSTALLED_APPS = [
+        "django.contrib.admin",
+        "django.contrib.auth",
+        "django.contrib.contenttypes",
+        "django.contrib.sessions",
+        "django.contrib.messages",
+        "django.contrib.staticfiles",
+
+        "django_extensions",
+        "blogs",
+    ]
+```
+
+#### 4. Start Jupiter Notebook Server
+
+```
+    python manage.py shell_plus --notebook
+```
+จะเข้าไปที่ folder notebooks
+#### 5. สร้าง/เพิ่มไฟล์ .ipynb สำหรับใช้กับ project django
+#### 6. จากนั้นใน Cell แรกของไฟล์ Notebook เพิ่ม code นี้ลงไป
+
+```py
+import os
+os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
+```
+
+#### 7. ตั้ง Kernel ให้เป็น Django Script
+#### 8. สามารถทำการ import models และ query ข้อมูลโดยใช้ API ของ Django ได้เลย
+
+```py
+from blogs.models import Blog
+
+for blog in Blog.objects.all():
+    print(blog)
+
+```
+ลองเพิ่มข้อมูลเข้าไปในทุกตารางเลยครับ จากนั้นลอง query ข้อมูลดู
+
+## Field Lookups ( Week 4 )
+
+[Django Doc](https://docs.djangoproject.com/en/5.0/topics/db/queries/#field-lookups)
+
+ความสุดยอดของ Django คือการที่เราสามารถเขียน WHERE condition ในการ query ข้อมูลจาก database ได้อย่างง่ายดายโดยการกำหนด lookup type ใน methods `filter()`, `exclude()` และ `get()`
+
+โดย format การกำหนด lookup type เป็นดังนี้ `field__lookuptype=value` (underscore 2 ตัว ระหว่าง ชื่อ field และ lookup type)
+
+ในกรณีที่ต้องการ filter ด้วย foreign key จะต้องเติม `_id` ต่อท้ายชื่อ field ด้วย เช่น
+
+```python
+>>> Entry.objects.filter(blog_id=4)
+```
+
+[Field lookup reference](https://docs.djangoproject.com/en/5.0/ref/models/querysets/#field-lookups)
+
+- exact
+- iexact
+- contains
+```sql
+-- Entry.objects.filter(headline__contains='Lennon')
+SELECT ... WHERE headline LIKE '%Lennon%';
+```
+- icontains
+```sql
+-- Entry.objects.filter(headline__icontains='Lennon')
+SELECT ... WHERE headline ILIKE '%Lennon%';
+```
+- startswith
+- endswith
+- in
+```sql
+-- Entry.objects.filter(headline__in=('a', 'b', 'c'))
+SELECT ... WHERE headline IN ('a', 'b', 'c');
+```
+- gt, gte, lt, lte
+```sql
+SELECT ... WHERE id > 4;
+```
+- range
+```sql
+-- Entry.objects.filter(pub_date__range=(start_date, end_date))
+SELECT ... WHERE pub_date BETWEEN '2005-01-01' AND '2005-03-31';
+```
+- date, year, month, day, week, week_day
+```sql
+-- Entry.objects.filter(pub_date__year=2005)
+-- Entry.objects.filter(pub_date__year__gte=2005)
+SELECT ... WHERE pub_date BETWEEN '2005-01-01' AND '2005-12-31';
+SELECT ... WHERE pub_date >= '2005-01-01';
+```
+- isnull
+```sql
+-- Entry.objects.filter(pub_date__isnull=True)
+SELECT ... WHERE pub_date IS NULL;
+```
+- regex
+```sql
+-- Entry.objects.get(title__regex=r"^(An?|The) +")
+SELECT ... WHERE title ~ '^(An?|The) +'; -- PostgreSQL
+```
+
+**HINT:** ถ้าอยากลองพิมพ์ SQL query ออกมาดูสามารถทำได้โดยใช้ `.query`
+
+```python
+q = Entry.objects.filter(headline__in=('a', 'b', 'c'))
+
+print(q.query)
+```
+
+## Lookups that span relationships
+
+QuerySet API ของ Django ช่วยให้เราสามารถ query ข้อมูลที่เกี่ยวข้องกับตารางอื่นที่มี relationship กันได้อย่างสะดวก โดย Django จะไปจัดการเรื่องการ generate SQL JOINs ให้หลังบ้าน
+
+ยกตัวอย่างเช่น ถ้าเราต้องการดึงข้อมูล Entry ทั้งหมดของ Blog ที่มี name = "Beatles Blog"
+
+```python
+>>> Entry.objects.filter(blog__name="Beatles Blog")
+>>> Entry.objects.filter(blog__name__contains="Beatles Blog")
+```
+
+สังเกตว่าเราเพียงเอาชื่อ field foreign key มาต่อด้วยชื่อ field ของตารางที่อ้างอิงไปถึง โดยคั่นด้วย underscore 2 ตัว - `blog__name` - และยังสามารถต่อด้วย lookup type ได้อีก
+
+นอกจากนั้นเรายังสามารถ query ข้อมูลไปกี่ต่อก็ได้ ดังตัวอย่าง
+
+```python
+Blog.objects.filter(entry__authors__name="Lennon")
+Blog.objects.filter(entry__authors__name__isnull=True)
+```
+
+## Filters can reference fields on the model
+
+ในกรณีที่เราต้องการเปรียบเทียบค่าของ field ใน model กับ field อื่นใน model เดียวกัน เราสามารถใช้ **F expressions** ได้ `F()`
+
+```python
+>>> from django.db.models import F
+>>> Entry.objects.filter(number_of_comments__gt=F("number_of_pingbacks"))
+>>> Entry.objects.filter(authors__name=F("blog__name")) # span relationships
+```
+
+โดย Django นั้น support การใช้ +, -, *, / ร่วมกับ `F()` ด้วย เช่น
+
+```python
+>>> Entry.objects.filter(number_of_comments__gt=F("number_of_pingbacks") * 2)
+>>> Entry.objects.filter(rating__lt=F("number_of_comments") + F("number_of_pingbacks"))
+```
+
+## Complex lookups with Q objects
+
+Keyword argument ที่ส่งเข้าไปใน method `filter()` ทุกตัวจะถูกเอามา generate เป็น `SELECT ... WHERE ... AND ...` เสมอ เช่น 
+
+โดยปกติถ้าเราใช้ `,` ขั้นระหว่าง filter condition จะเป็นการ AND กัน
+
+```sql
+-- Entry.objects.filter(headline__contains='Lennon', pub_date__year=2005)
+SELECT * FROM entry WHERE headline LIKE '%Lennon%' AND pub_date BETWEEN '2005-01-01' AND '2005-12-31';
+```
+
+ในกรณีที่เราต้องการทำการ query ที่ซับซ้อน อาจจะต้องการใช้ `OR` หรือ `NOT` ร่วมด้วย เราจะต้องใช้ `Q objects`
+
+กรณี OR
+
+```python
+Entry.objects.filter(Q(headline__startswith="Who") | Q(headline__startswith="What"))
+# SELECT ... WHERE headline LIKE 'Who%' OR headline LIKE 'What%'
+```
+
+กรณี NOT
+
+```python
+Entry.objects.filter(Q(headline__startswith="Who") | ~Q(pub_date__year=2005))
+# SELECT ... WHERE headline LIKE 'Who%' OR pub_date NOT BETWEEN '2005-01-01' AND '2005-12-31'; 
+```
+
+กรณี nested conditions
+
+```python
+Poll.objects.get(
+    Q(question__startswith="Who"),
+    (Q(pub_date=date(2005, 5, 2)) | Q(pub_date=date(2005, 5, 6))),
+)
+```
+
+แปลงเป็น SQL
+
+```sql
+SELECT * from polls WHERE question LIKE 'Who%' 
+    AND (pub_date = '2005-05-02' OR pub_date = '2005-05-06')
+```
+
+
+
