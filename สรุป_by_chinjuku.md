@@ -2,6 +2,15 @@
 ### CRUD in django abstraction api
 - `create()` create data and add it to table
 ```py
+    # ทำได้ 2 แบบ
+    # 1.
+    pd1 = Product(
+        name="Philosopher's Stone (1997)",
+        description="By J. K. Rowling.",
+        remaining_amount=20,
+        price=790
+    )
+    # 2.
     company = Company.objects.create(
         name="sss", email="sss@gmail.com"
     )
@@ -38,6 +47,27 @@
 - CASCADE -> ถูกลบตาม foreignkey ที่ถูกลบ
 - PROTECT -> ถ้า foreignkey ถูกลบตัวที่ถูก set PROTECT จะไม่ถูกลบตาม
 - DO_NOTHING -> ถ้า foreignkey ถูกลบตัวที่ถูก set DO_NOTHING จะไม่เกิดไรขึ้นเลย
+
+### Concat() function
+```py
+    from django.db.models.functions import Concat
+    customers = Customer.objects.annotate(full_name=Concat(F("first_name"), Value(' '), F("last_name")))
+```
+
+### Avg(), Sum(), Min(), Max() function
+```py
+    from django.db.models import *
+    # Avg()
+    pd = Product.objects.aggregate(avg=Avg("price"))
+    print(pd)
+    # Sum()
+    cartitem = CartItem.objects.filter(cart__create_date__month=5).aggregate(sum=Sum('product__price'))
+print(cartitem)
+    # Min()
+    cartitem = CartItem.objects.aggregate(min=Min('product__price'))
+    # Max()
+    cartitem = CartItem.objects.aggregate(max=Max('product__price'))
+```
 
 ### Field look up range (__range)
 ```py
