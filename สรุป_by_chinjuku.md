@@ -1,9 +1,34 @@
 # สรุป by Chinjuku
 ### CRUD in django abstraction api
-- create()
-- all(), get(), filter() etc..
-- update()
-- delete()
+- `create()` create data and add it to table
+```py
+    company = Company.objects.create(
+        name="sss", email="sss@gmail.com"
+    )
+    company.save()
+```
+- `all(), get(), filter() etc..` query data to Queryset
+    - filter() คัดกรองหลายตัว
+    - all() เอามาทั้งหมด
+    - get() เอามาตัวเดียว / ตัวที่เป็นเอกลักษณ์ ex. primarykey
+```py
+    pd1 = Product.objects.filter(price__gte=5000, categories__name="Information Technology").first()
+    pd2 = Product.objects.get(pk=2)
+    pd3 = Product.objects.all()
+```
+- `update()` to update data / can update many data
+```py
+    pd1 = Product.objects.filter(price__gte=5000).update(
+        product_name="rexx",
+        pub_date="brabra"
+    )
+    pd1.save()
+```
+- `delete()` to delete data / can delete many data
+```py
+    pd1 = Product.objects.filter(price__gte=5000).delete()
+```
+
 ### การสร้าง Models Foreignkey field **(on_delete)
 ```py
     author = models.ForeignKey(Author, on_delete = models.CASCADE)

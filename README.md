@@ -666,13 +666,410 @@ ORM ของ Django นั้น support การใช้งาน function �
     >>> Company.objects.order_by(Length("name").asc()) # ASC
     >>> Company.objects.order_by("-name") # DESC
 ```
+เปิด Django shell จากนั้นสร้างแถวข้อมูลด้วยคำสั่ง
+
+```python
+>>> from company.models
+>>> Company.objects.create(name="Company AAA", num_employees=120, num_chairs=150, num_tables=60)
+>>> Company.objects.create(name="Company BBB", num_employees=50, num_chairs=30, num_tables=20)
+>>> Company.objects.create(name="Company CCC", num_employees=100, num_chairs=40, num_tables=40)
+```
+
+**ลองทดสอบคำสั่งด้านล่างนี้ดู แล้วดูสิว่าได้ผลลัพธ์เป็นอย่างไร**
+
+```python
+>>> from company.models import Company
+>>> from django.db.models import Count, F, Value
+>>> from django.db.models.functions import Length, Upper
+>>> from django.db.models.lookups import GreaterThan
+
+# Find companies that have more employees than chairs.
+>>> Company.objects.filter(num_employees__gt=F("num_chairs"))
+
+# Find companies that have at least twice as many employees as chairs.
+>>> Company.objects.filter(num_employees__gt=F("num_chairs") * 2)
+
+# Find companies that have more employees than the number of chairs and tables combined.
+>>> Company.objects.filter(num_employees__gt=F("num_chairs") + F("num_tables"))
+
+# How many chairs are needed for each company to seat all employees?
+>>> company = (
+...     Company.objects.filter(num_employees__gt=F("num_chairs"))
+...     .annotate(chairs_needed=F("num_employees") - F("num_chairs"))
+...     .first()
+... )
+>>> company.num_employees
+50
+>>> company.num_chairs
+30
+>>> company.chairs_needed
+20
+
+# Create a new company using expressions.
+>>> company = Company.objects.create(name="Google", ticker=Upper(Value("goog")))
+# Be sure to refresh it if you need to access the field.
+>>> company.refresh_from_db()
+>>> company.ticker
+'GOOG'
+
+# Expressions can also be used in order_by(), either directly
+>>> Company.objects.order_by(Length("name").asc())
+>>> Company.objects.order_by(Length("name").desc())
+
+# Lookup expressions can also be used directly in filters
+>>> Company.objects.filter(GreaterThan(F("num_employees"), F("num_chairs")))
+# or annotations.
+>>> Company.objects.annotate(
+...     need_chairs=GreaterThan(F("num_employees"), F("num_chairs")),
+... )
+```
+
+## Aggregate expression
+
+สำหรับ tutorial นี้ให้ทำตามขั้นตอนนี้ 
+
+1. สร้าง app ใหม่ชื่อ `books` ใน project `week5_tutorial` อันเดิม
+2. เพิ่ม app books ใน `settings.py`
+3. แก้ไขไฟล์ `/books/models.py` และเพิ่ม code ด้่านล่างลงไป โดย models เหล่านี้เราจะใช้ในการทำ tutorial นี้กัน
+4. `makemigrations` และ `migrate`
+
+```python
+from django.db import models
+
+
+class Author(models.Model):
+    name = models.CharField(max_length=100)
+    age = models.IntegerField()
+
+
+class Publisher(models.Model):
+    name = models.CharField(max_length=300)
+
+
+class Book(models.Model):
+    name = models.CharField(max_length=300)
+    pages = models.IntegerField()
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    rating = models.FloatField()
+    authors = models.ManyToManyField(Author)
+    publisher = models.ForeignKey(Publisher, on_delete=models.CASCADE)
+    pubdate = models.DateField()
+
+
+class Store(models.Model):
+    name = models.CharField(max_length=300)
+    books = models.ManyToManyField(Book)
+```
+
+ทำการ import ข้อมูลเข้าตารางทั้งหมดด้วย SQL ในไฟล์ `books.sql`
+
+
+**ลองทดสอบคำสั่งด้านล่างนี้ดู แล้วดูสิว่าได้ผลลัพธ์เป็นอย่างไร**
+
+```python
+>>> from books.models import Book
+# Total number of books.
+>>> Book.objects.count()
+59
+
+# Total number of books with publisher=Penguin Books
+>>> Book.objects.filter(publisher__name="Penguin Books").count()
+20
+
+# Average price across all books, provide default to be returned instead
+# of None if no books exist.
+>>> from django.db.models import Avg
+>>> Book.objects.aggregate(Avg("price", default=0))
+{'price__avg': Decimal('9.7018644067796610')}
+
+# Max price across all books, provide default to be returned instead of
+# None if no books exist.
+>>> from django.db.models import Max
+>>> Book.objects.aggregate(Max("price", default=0))
+{'price__max': Decimal('14.99')}
+
+# All the following queries involve traversing the Book<->Publisher
+# foreign key relationship backwards.
+
+# Each publisher, each with a count of books as a "num_books" attribute.
+>>> from books.models import Publisher
+>>> from django.db.models import Count
+>>> pubs = Publisher.objects.annotate(num_books=Count("book"))
+>>> pubs
+<QuerySet [<Publisher: BaloneyPress>, <Publisher: SalamiPress>, ...]>
+>>> pubs[0].num_books
+20
+
+# Each publisher, with a separate count of books with a rating above and below 4
+>>> from django.db.models import Q
+>>> above = Publisher.objects.annotate(above_4=Count("book", filter=Q(book__rating__gt=4)))
+>>> below = Publisher.objects.annotate(below_4=Count("book", filter=Q(book__rating__lte=4)))
+>>> above[0].above_4
+16
+>>> below[0].below_4
+4
+
+# The top 5 publishers, in order by number of books.
+>>> pubs = Publisher.objects.annotate(num_books=Count("book")).order_by("-num_books")[:5]
+>>> pubs[0].num_books
+39
+```
+# Model Relationships
+
+## Many-to-one relationships
+
+สำหรับการนิยาม Many-to-one Relationships จะใช้การประกาศ ForeignKey เป็น field ใน models
+
+ต่อเนื่องจากตัวอย่าง `books/models.py` ใน model `Book` จะเห็นว่ามีการประกาศ ForeignKey เก็บ `publisher_id` ซึ่งชี้ไปยัง instance ใน model `Publisher`
+
+```python
+# /books/models.py
+...
+class Publisher(models.Model):
+    name = models.CharField(max_length=300)
+
+class Book(models.Model):
+    name = models.CharField(max_length=300)
+    pages = models.IntegerField()
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    rating = models.FloatField()
+    authors = models.ManyToManyField(Author)
+    publisher = models.ForeignKey(Publisher, on_delete=models.CASCADE)
+    pubdate = models.DateField()
+...
+```
+
+สมมติเราจะสร้าง book เล่มใหม่ที่มีการ FK ไปหา publisher "Penguin Books"
+
+```python
+>>> from books.models import Publisher, Book
+>>> from datetime import datetime
+# Get the publisher instance
+>>> penguin_pub = Publisher.objects.get(name="Penguin Books")
+
+# Create a new book
+>>> book = Book.objects.create(
+    name="Web Programming is HARD",
+    pages=200,
+    price=10.00,
+    rating=4.5,
+    publisher=penguin_pub,
+    pubdate=datetime.now().date()
+)
+>>> book
+<Book: Book object (61)>
+>>> book.publisher.name
+'Penguin Books'
+>>> book.publisher.id
+1
+```
+
+ในกรณีที่เราต้องการรายการ book ทั้งหมดที่เกี่ยวข้องกับ publisher "Penguin Books" สามารถทำได้ดังนี้
+
+```python
+>>> from books.models import Publisher, Book
+# Get the publisher instance
+>>> penguin_pub = Publisher.objects.get(name="Penguin Books")
+
+# Get all books published by "Penguin Books"
+>>> books = penguin_pub.book_set.all()
+<QuerySet [<Book: Book object (2)>, <Book: Book object (3)>, <Book: Book object (4)>, <Book: Book object (5)>, <Book: Book object (6)>, <Book: Book object (7)>, <Book: Book object (8)>, <Book: Book object (9)>, <Book: Book object (10)>, <Book: Book object (11)>, <Book: Book object (12)>, <Book: Book object (13)>, <Book: Book object (14)>, <Book: Book object (15)>, <Book: Book object (16)>, <Book: Book object (17)>, <Book: Book object (18)>, <Book: Book object (19)>, <Book: Book object (20)>, <Book: Book object (21)>, '...(remaining elements truncated)...']>
+
+# How may books?
+>>> penguin_pub.book_set.count()
+21
+
+# Get top 10 best rating books
+>>> penguin_pub.book_set.order_by("-rating")[:10]
+<QuerySet [<Book: Book object (14)>, <Book: Book object (4)>, <Book: Book object (15)>, <Book: Book object (9)>, <Book: Book object (12)>, <Book: Book object (3)>, <Book: Book object (8)>, <Book: Book object (18)>, <Book: Book object (61)>, <Book: Book object (10)>]>
+
+# Get books with name starting with "The"
+>>> penguin_pub.book_set.filter(name__startswith="The")
+<QuerySet [<Book: Book object (2)>, <Book: Book object (6)>, <Book: Book object (9)>, <Book: Book object (15)>, <Book: Book object (18)>]>
+
+# Get only ids
+>>> penguin_pub.book_set.filter(name__startswith="The").values_list("id", flat=True)
+<QuerySet [2, 6, 9, 15, 18]>
+
+# Get id and name
+>>> penguin_pub.book_set.filter(name__startswith="The").values("id", "name")
+<QuerySet [{'id': 2, 'name': 'The Great Gatsby'}, {'id': 6, 'name': 'The Catcher in the Rye'}, {'id': 9, 'name': 'The Odyssey'}, {'id': 15, 'name': 'The Hobbit'}, {'id': 18, 'name': 'The Hitchhiker Guide to the Galaxy'}]>
+```
+
+สมมติว่าเราต้องการต้นหาจากทางฝั่ง book บ้าง ถ้าเราต้องหนังสือที่ rating >= 4.5 และ published โดยสำนักพิมพ์ "Oxford University Press"
+
+```python
+>>> from books.models import Book
+
+>>> results = Book.objects.filter(publisher__name="Oxford University Press", rating__gte=4.5)
+>>> results
+<QuerySet [<Book: Book object (24)>, <Book: Book object (27)>, <Book: Book object (30)>, <Book: Book object (33)>, <Book: Book object (44)>, <Book: Book object (56)>]>
+```
+
+หรือจะ filter จากทางฝั่ง publisher ก็ได้
+
+```python
+>>> from books.models import Publisher
+>>> Publisher.objects.filter(book__id=20)
+<QuerySet [<Publisher: Publisher object (1)>]>
+
+>>> Publisher.objects.filter(book__pubdate='1967-05-30')
+<QuerySet [<Publisher: Publisher object (1)>]>
+# SELECT "books_publisher"."id", "books_publisher"."name" FROM "books_publisher" INNER JOIN "books_book" ON ("books_publisher"."id" = "books_book"."publisher_id") WHERE "books_book"."pubdate" = 1967-05-30
+```
+
+## One-to-one Relationships
+
+เรามาเพิ่มความสัมพันธ์แบบ one-to-one ให้กับตารางใน database ของเรากัน
+
+แก้ไขเพิ่ม code ด้านล่างนี้ในไฟล์ `/books/models.py`
+
+```python
+...
+# เพิ่มไว้ล่างสุดเลยนะครับ
+class StoreContact(models.Model):
+    mobile = models.CharField(max_length=20)
+    email = models.EmailField(max_length=50, blank=True, null=True)
+    address = models.TextField()
+    store = models.OneToOneField(Store, on_delete=models.CASCADE)
+```
+
+เรามาสร้างเพิ่ม store contact กันสำหรับ "KMITL Book Store"
+
+```python
+>>> from books.models import Store, StoreContact
+# Get KMITL Book Store
+>>> store = Store.objects.get(name="KMITL Book Store")
+# Create contact information
+>>> contact = StoreContact(
+    mobile="021113333",
+    email="book_shop@it.kmitl.ac.th",
+    address="KMITL",
+    store=store
+)
+>>> contact.save()
+```
+
+การเข้าถึงข้อมูล สามารถทำได้จากทั้ง 2 ฝั่ง
+
+```python
+>>> contact.store
+<Store: Store object (2)>
+
+>>> store.storecontact
+<StoreContact: StoreContact object (1)>
+
+# สามารถ filter ได้คล้ายกับ one-to-many
+>>> Store.objects.filter(storecontact__mobile="021113333")
+<QuerySet [<Store: Store object (2)>]>
+```
+
+## Many-to-many Relationships
+
+จะเห็นได้ว่า model Book และ Author มีความสัมพันธ์กันแบบ many-to-many
+
+```python
+class Author(models.Model):
+    name = models.CharField(max_length=100)
+    age = models.IntegerField()
+
+...
+
+class Book(models.Model):
+    name = models.CharField(max_length=300)
+    pages = models.IntegerField()
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    rating = models.FloatField()
+    authors = models.ManyToManyField(Author)
+    publisher = models.ForeignKey(Publisher, on_delete=models.CASCADE)
+    pubdate = models.DateField()
+```
+
+เมื่อเราสั่ง `python manage.py migrate` Django จะทำการสร้างตารางกลางให้อัตโนมัตื อย่างในกรณีนี้จะมีตาราง `books_book_author` ถูกสร้างขึ้นมา
+
+สำหรับการเพิ่ม author ให้กับ book
+
+```python
+>>> from books.models import Book, Author
+>>> a1 = Author.objects.get(pk=1)
+>>> a2 = Author.objects.get(pk=2)
+
+>>> book = Book.objects.get(pk=10)
+>>> book.authors.add(a1, a2)
+
+>>> book.authors.all()
+<QuerySet [<Author: Author object (5)>, <Author: Author object (1)>, <Author: Author object (2)>]>
+```
+
+สำหรับการเพิ่ม book ใหม่ให้กับ author
+
+```python
+>>> from books.models import Book, Author
+>>> b1 = Book.objects.get(pk=11)
+>>> b2 = Book.objects.get(pk=12)
+
+>>> author = Author.objects.get(pk=10)
+>>> author.book_set.add(b1, b2)
+
+>>> author.book_set.all()
+<QuerySet [<Book: Book object (11)>, <Book: Book object (12)>, <Book: Book object (19)>, <Book: Book object (20)>, <Book: Book object (30)>, <Book: Book object (50)>]>
+```
+
+สามารถทำการ filter ได้จากทั้ง 2 ฝั่งเช่นเดียวกับ one-to-one และ one-to-many
+
+```python
+>>> Book.objects.filter(authors__name="F. Scott Fitzgerald")
+<QuerySet [<Book: Book object (51)>, <Book: Book object (2)>, <Book: Book object (21)>, <Book: Book object (31)>, <Book: Book object (10)>]>
+
+>>> Author.objects.filter(book__name="Crime and Punishment")
+<QuerySet [<Author: Author object (5)>, <Author: Author object (1)>, <Author: Author object (2)>]>
+```
+
+สามารถทำการ ยกเลิก ความสัมพันธ์ ได้โดยใช้ `remove()` หรือ `clear()` ถ้าต้องการลบความสัมพันธ์ทั้งหมด
+
+```python
+>>> book = Book.objects.get(pk=10)
+
+>>> book.authors.remove(a1)
+>>> book.authors.all()
+<QuerySet [<Author: Author object (2)>, <Author: Author object (5)>]>
+
+>>> book.authors.clear()
+>>> book.authors.all()
+<QuerySet []>
+```
 
 # สรุป by Chinjuku
 ### CRUD in django abstraction api
-- create()
-- all(), get(), filter() etc..
-- update()
-- delete()
+- `create()` create data and add it to table
+```py
+    company = Company.objects.create(
+        name="sss", email="sss@gmail.com"
+    )
+    company.save()
+```
+- `all(), get(), filter() etc..` query data to Queryset
+    - filter() คัดกรองหลายตัว
+    - all() เอามาทั้งหมด
+    - get() เอามาตัวเดียว / ตัวที่เป็นเอกลักษณ์ ex. primarykey
+```py
+    pd1 = Product.objects.filter(price__gte=5000, categories__name="Information Technology").first()
+    pd2 = Product.objects.get(pk=2)
+    pd3 = Product.objects.all()
+```
+- `update()` to update data / can update many data
+```py
+    pd1 = Product.objects.filter(price__gte=5000).update(
+        product_name="rexx",
+        pub_date="brabra"
+    )
+    pd1.save()
+```
+- `delete()` to delete data / can delete many data
+```py
+    pd1 = Product.objects.filter(price__gte=5000).delete()
+```
+
 ### การสร้าง Models Foreignkey field **(on_delete)
 ```py
     author = models.ForeignKey(Author, on_delete = models.CASCADE)
@@ -749,7 +1146,3 @@ ORM ของ Django นั้น support การใช้งาน function �
     )
     print(company.chairs_needed)
 ```
-
-
-
-
