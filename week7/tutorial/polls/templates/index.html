@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Question List{% endblock %}
+
+{% block section1 %}
+    <h1 class="title">All questions</h1>
+    <div class="content">
+    {% if question_list %}
+        <ul>
+        {% for question in question_list %}
+        <li><a href="{% url 'detail' question.id %}">{{ question.question_text|truncatechars:40 }}</a>
+            - Published date: {{question.pub_date|date:"D d, M y"}}</li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No polls are available.</p>
+    {% endif %}
+    </div>
+{% endblock %}
+
+{% block section2 %}
+    <p class="subtitle">
+        Total: {{question_list|length}} questions <!-- ใช้ filter length เพื่อแสดงขนาดของ list question_list -->
+    </p>
+{% endblock %}
