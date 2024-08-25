@@ -1,108 +1,206 @@
-# 📂 - Setting up the project environment.
+# Setup-project
 
----
-## 🐍 - Create a virtual environment and django module
-Create a directory for your project, for example, a folder named `lab`. This will be your project directory. Then, use the command `cd lab` to navigate into this directory. Once done, open your terminal and follow the instructions below.
+#### **1. Create virtual environment**
 
-```bash
-pip install virtualenv
-python -m venv env 
-env\Scripts\activate.bat
-```
-* Installs the virtualenv package to create isolated Python environments.
-* Creates a virtual environment named `env` using the built-in venv module.
-* Activates the `env` virtual environment so you can use it.
+```python
+#### step 1
+# Create a virtual environment (Windows)
+> py -m venv myvenv
 
-Install Django
-```bash
-pip install django
-```
-To check if Django is installed, use the following command:
-```bash
-python -m django --version
-```
-Expected output:
-```bash
-> 4.2.13
-```
-This output will display the installed version of the Django module.
+# Activate virtual environment (Windows)
+> myvenv\Scripts\activate.bat
 
-## 🦒 - Creating a Django project
-Run the following command to create a new Django project named `quiz`
-```bash
-django-admin startproject quiz
-```
-You'll get a project file structure like this:
-```bash
-quiz/
-    manage.py
-    quiz/
-        __init__.py
-        settings.py  # for setting your project
-        urls.py      # for setting path your project
-        asgi.py
-        wsgi.py
-```
-## ⭐️ - Creating a application
-An "app" in Django is a web application that does something, such as a blog, a forum, or a simple poll. Each app typically focuses on a specific piece of functionality
-When you run `python manage.py startapp [app_name]`, Django generates a new directory named `[app_name]` containing the basic files and folders needed for the app
+# Create a virtual environment (MacOS)
+> python -m venv myvenv
 
-Let's create an app called "Polls" using the command
-```bash
-python manage.py startapp polls
+# Activate virtual environment (MacOS)
+> source myvenv/bin/activate
 ```
 
-This command will create a folder named `polls` containing the following files
-```bash
-polls/
-    __init__.py
-    admin.py
-    apps.py
-    migrations/
-        __init__.py
-    models.py
-    tests.py
-    views.py
-```
-## 🎒 - Database Setup
-First, ensure PostgreSQL is installed by checking the version with the command
-```bash
-postgres --version
-```
-Expected output
-```
-postgres (PostgreSQL) 15.0
-```
-Next, install the Postgres Client psycopg2:
-```
-pip install psycopg2
-pip install psycopg2-binary
-```
-Then, open the `quiz/settings.py` file and locate the section:
-```bash
-# Database
-# https://docs.djangoproject.com/en/4.2/ref/settings/#databases
+#### **2. Install Django & start a new project "myblogs"**
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
-}
-```
-Modify it to use PostgreSQL as follows
-```bash
-# Database
-# https://docs.djangoproject.com/en/4.2/ref/settings/#databases
+```python
+#### Install pip
+> pip install psycopg2
 
+# Install Django
+> pip install django
+
+# Create project "myblogs"
+> django-admin startproject myshop
+
+# Create the "blogs" app
+> python manage.py startapp shop
+```
+
+#### 3.  Create Database in pgAdmin4
+
+#### 4. Setting file
+
+```python
+# file >> settings.py
+# Database setting
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "mypolls",
-        "USER": "db_username",
+        "NAME": "shop", ##แก้ตรงนี้ด้วย
+        "USER": "postgres", ##postgres
         "PASSWORD": "password",
         "HOST": "localhost",
         "PORT": "5432",
     }
 }
+
+# Add app blogs to INSTALLED_APPS
+INSTALLED_APPS = [
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    # Add your apps here
+    "shop",
+]
+```
+
+#### 5. Import Model
+
+#### 6.  Makemigrations & Migrate
+
+```python
+> python manage.py makemigrations
+
+> python manage.py migrate
+```
+
+---
+
+#### 7.  Setup **Django Notebook Extension**
+
+```python
+# ติดตั้ง django-extensions และ jupyter notebook ด้วยคำสั่ง
+> pip install django-extensions ipython jupyter notebook
+
+# จากนั้นให้แก้ไข version ของ package ภายใน jupyter และ notebook
+> pip install ipython==8.25.0 jupyter_server==2.14.1 jupyterlab==4.2.2 jupyterlab_server==2.27.2
+
+#แก้ไข version notebook (หากติดตั้ง หรือ run jupyter ไม่ได้ให้ลองเปลี่ยน version 6.5.6)
+> pip install notebook==6.5.7
+
+#จากนั้นสร้าง directory ชื่อ notebooks
+> mkdir notebooks
+```
+
+#### 8. Setting file
+
+```python
+INSTALLED_APPS = [
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+
+		# Add your extensions here
+    "django_extensions",
+    "shop",
+]
+```
+
+#### 9. Start Jupyter Notebook
+
+```python
+> python manage.py shell_plus --notebook
+```
+
+#### 10. Create file .ipynb in notebook
+
+#### 11. Cell แรกของไฟล์ Notebook
+
+```python
+import os
+os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
+
+# import modules
+from shop.models import *
+from django.db.models import *
+from django.db.models.functions import *
+from django.db.models.lookups import *
+from datetime import *
+import json
+```
+---
+# The Views Setup
+
+#### **1. สร้าง ```views.py``` ใน โฟลเดอร์ app**
+
+```python
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import render
+from django.views import View
+from django.db.models import Count 
+from .models import *
+from django.http import Http404
+import json
+
+class EmployeeView(View):
+
+    def get(self, request):
+        employees = Employee.objects.all()
+        total_employee = employees.count()
+        context = {"employees": employees, "total_employee": total_employee}
+        return render(request, "employee.html", context)
+```
+
+#### **2. สร้าง ```urls.py``` ในโฟลเดอร์ app แล้วกำหนด path สำหรับเข้าถึง views**
+
+```python
+from django.urls import path
+
+from . import views
+
+urlpatterns = [
+    path("", views.EmployeeView.as_view(), name="employee"),
+    
+]
+```
+
+#### **3. กำหนด path สำหรับเข้าถึง ```urls.py``` ของ app ในโฟลเดอร์ project ```urls.py```**
+
+```python
+...
+from django.urls import path , include
+
+urlpatterns = [
+    path("admin/", admin.site.urls),
+    path("", include("polls.urls")),
+]
+```
+
+#### **4. แก้ไขไฟล์ใน ```setting.py```**
+```python
+import os
+SETTINGS_PATH = os.path.dirname(os.path.dirname(__file__))
+
+TEMPLATE_DIRS = (
+    os.path.join(SETTINGS_PATH, 'templates'),
+)
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+STATIC_URL = "static/"
+
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+]
+
+```
+
+#### **5. รันคำสั่ง**
+
+```python
+### Start server
+> python manage.py runserver
 ```
