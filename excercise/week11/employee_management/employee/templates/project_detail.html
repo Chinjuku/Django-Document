@@ -1,0 +1,66 @@
+{% extends "layout.html" %}
+
+{% block title %}Project Detail{% endblock %}
+
+{% block head %}
+<h1>Project Detail</h1>
+{% endblock %}
+
+{% block content %}
+<div>
+    <form class="form" id="project-form" method="post" style="margin-top: 15px; width: 100%;">
+        {% csrf_token %}
+        <div class="" style="display: flex; gap: 10px">
+            <div class="div-name" style="width: 500px;">
+                {{ form.name.label_tag }}{{ form.name }}
+            </div>
+
+            <div class="div-start-date">
+                {{ form.start_date.label_tag }}{{ form.start_date }}
+            </div>
+
+            <div class="div-due-date">
+                {{ form.due_date.label_tag }}{{ form.due_date }}
+            </div>
+        </div>
+
+
+        {{ form.description.label_tag }}{{ form.description }}
+
+        {{ form.manager.label_tag }}{{ form.manager }}
+
+        {{ form.staff.label_tag }}{{ form.staff }}
+
+        <button type="submit" style="width: 80px;">Save</button>
+    </form>
+</div>
+
+<br />
+<br />
+
+<div>
+    <div class="head">
+        <h2>Employee in this project</h2>
+    </div>
+    <div class="itemGroup">
+        {% for data in project.staff.all %}
+        <div class="item">
+            <!-- id ของพนักงาน ชื่อ นามสกุล -->
+            <div>{{data.id}} {{data.first_name}} {{data.last_name}}</div>
+            <!-- position name -->
+            <div></div>
+
+            <div class="action">
+                <!-- path สำหรับ ลบพนักงานออกจาก project ใช้ method GET ใน View -->
+                <form method="get">
+                    <input value="{{data.id}}" type="hidden" />
+                    <button type="submit" class="delete">Kick Staff</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+{% endblock %}
+

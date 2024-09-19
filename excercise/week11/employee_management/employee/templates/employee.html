@@ -1,0 +1,72 @@
+{% extends 'layout.html' %}
+{% load humanize %}
+
+{% block title %} Employee Page {% endblock %}
+
+{% block head %}
+    <h1>Employee</h1>
+    <div class>
+        <!-- จำนวนพนักงานทั้งหมด -->
+        <h1>Total {{ count }} People</h1>
+    </div>
+{% endblock %}
+
+{% block content %}
+<button>
+    <a style="color: white;" href="{% url 'employee_form' %}">New Employee</a>
+</button>
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Full Name</th>
+            <th>Gender</th>
+            <th>Birth Date</th>
+            <th>Hire Date</th>
+            <th>Salary</th>
+            <th>Department</th>
+            <th>Position</th>
+            <th>Location</th>
+            <th>Province</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for em in employees %}
+        <tr style="color: {% if forloop.first or forloop.last %}red{% else %}black{% endif %};">
+            <!-- employee id -->
+            <td>{{em.id}}</td> 
+            <!-- ชื่อ นามสกุล -->
+            <td>{{em.full_name}}</td>
+            <!-- เพศ -->
+            <td>
+                {% if em.gender == "M" %}
+                Male
+                {% elif em.gender == "F" %}
+                Female
+                {% else %}
+                Other
+                {% endif %}
+            </td>
+            <!-- วันเกิด -->
+            <td>{{em.birth_date|date:"d/m/Y"}}</td>
+            <!-- วันเริ่มงาน -->
+            <td>{{em.hire_date|date:"d/m/Y"}}</td>
+            <!-- เงินเดือน -->
+            <td>{{ em.salary|intcomma }}</td>
+            <!-- แผนก -->
+            <td>{{em.position.department.name}}</td>
+            <!-- ตำแหน่งงาน -->
+            <td>{{em.position.name}}</td>
+            <td>{{em.employeeaddress.location}}</td>
+            <td>{{em.employeeaddress.province}}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="8">ไม่มีข้อมูลในตาราง</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}
